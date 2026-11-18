@@ -1,0 +1,38 @@
+List of 12
+ $ version       : chr "IST-final-score-v1"
+ $ R             : int 300
+ $ B             : int [1:2] 200 1000
+ $ observed_B    : int 1000
+ $ observed_runs : int 30
+ $ tuning_runs   : int 15
+ $ reference_B   : int 50000
+ $ reference_R   : int 50000
+ $ seed          : int 2026111801
+ $ tuning        : int [1:9] 10 20 50 100 200 500 1000 2000 5000
+ $ arm_stratified: logi TRUE
+ $ blb           : chr "K=ceil(n/b) disjoint balanced bags in each arm; B inner draws per bag"
+R version 4.3.1 (2023-06-16)
+Platform: aarch64-apple-darwin20 (64-bit)
+Running under: macOS 15.6
+
+Matrix products: default
+BLAS:   /Library/Frameworks/R.framework/Versions/4.3-arm64/Resources/lib/libRblas.0.dylib 
+LAPACK: /Library/Frameworks/R.framework/Versions/4.3-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.11.0
+
+Random number generation:
+ RNG:     L'Ecuyer-CMRG 
+ Normal:  Inversion 
+ Sample:  Rejection 
+ 
+locale:
+[1] C.UTF-8/C.UTF-8/C.UTF-8/C/C.UTF-8/C.UTF-8
+
+time zone: America/New_York
+tzcode source: internal
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base     
+
+loaded via a namespace (and not attached):
+[1] compiler_4.3.1 tools_4.3.1    Rcpp_1.0.11   
+source MD5 c233a72eef0aa30b23569b2017ed17dd

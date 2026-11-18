@@ -1,0 +1,5 @@
+Validated rows: 128000
+Datasets per model/sample-size: 200
+All estimates and standard errors finite; all methods retained.
+Paired comparisons use common data, but independent bootstrap random numbers by method.
+BLB computes B draws in every one of K near-equal disjoint bags.

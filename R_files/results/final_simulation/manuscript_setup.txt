@@ -1,0 +1,146 @@
+MANUSCRIPT SETUP: EXACTLY THE RUNNING FINAL CODE
+
+Source: final_simulation.R and final_simulation_kernel.cpp, configuration version
+2, base seed 20261118, L'Ecuyer-CMRG independent data-set streams. The same base
+data and resampling indices are used across d=0,1,2,3,4 within each method.
+Methods use independent resampling streams conditional on the common data.
+Two workers parallelize independent data sets; each kernel uses one BLAS thread.
+
+Main experiment: 200 independent data sets per model/sample-size setting;
+B=200,500 bootstrap replicates. Gamma n=10000,50000; U-statistic n=1000,4000;
+regularized precision n=2000,8000. This gives 1600 independent data sets and
+128000 method/effect/budget records. Maximum rejection-probability MCSE is
+sqrt(.25/200)=.03536; at probability .05 it is .01541. Rejection plots must be
+read with these uncertainties. No failed or unfavorable runs are dropped.
+
+LOG GAMMA MEAN
+G_i are Gamma(shape=kappa, rate=kappa), with kappa=.005. X_i=exp(theta_d)G_i,
+theta_d=d/sqrt(n*kappa), d=0:4. The statistic is log(mean(X)); population target
+theta_d, null theta=0. Exact sampling variance is trigamma(n*kappa), independent
+of theta. The alternative reuses the same Gamma sample by adding theta_d to
+each fitted log mean and each resample log mean.
+
+CAPPED RECIPROCAL GAMMA MEAN
+G_i are Gamma(kappa,kappa), kappa=.05; X_i=G_i/theta_d,
+theta_d=1+d/sqrt(n*kappa), null theta=1. Statistic min(1000,1/mean(X)); population
+functional min(1000,1/E[X])=theta_d for all settings here. The cap is retained
+in EVERY bootstrap and in the reference truth. If a=n*kappa, c=a*theta/1000,
+Z~Gamma(shape=a,rate=1), the first two raw sampling moments are
+M1=1000*P(Z<=c)+theta*a/(a-1)*P(Gamma(a-1,1)>c),
+M2=1000^2*P(Z<=c)+(theta*a)^2/((a-1)*(a-2))*P(Gamma(a-2,1)>c).
+True SD=sqrt(M2-M1^2). All original-sample a exceed 2. This does NOT license
+uncapped inverse moments in the tiny m-out-of-n samples: m*kappa may be below
+one or two, and the cap is essential there.
+
+PAIRWISE EUCLIDEAN DISTANCE (NONDEGENERATE ORDER-TWO U-STATISTIC)
+Z_i~.98 N_3(0,I_3)+.02 N_3(10e_1,I_3); X_i=a_d Z_i.
+U_n=2/[n(n-1)] sum_{i<j} ||X_i-X_j||. Let p=.02 and L=10. At a=1,
+theta0=(p^2+(1-p)^2)*4/sqrt(pi)+2p(1-p)*cL,
+cL=(L+2/L)*(2 Phi(L/sqrt(2))-1)+2/sqrt(pi)*exp(-L^2/4).
+Let q(z)=E||z-Z'||. Its ingredients are the mean of a noncentral chi_3:
+f(r)=sqrt(2/pi)*exp(-r^2/2)+(r+1/r)*(2Phi(r)-1), f(0)=2sqrt(2/pi).
+Then q(z)=(1-p)f(||z||)+p f(||z-Le1||),
+zeta1=Var(q(Z)), varh=6+2p(1-p)L^2-theta0^2.
+zeta1 is evaluated by 40-node tensor Gaussian quadrature in each dimension;
+all three constants agree with a 60-node rule to <1e-9. They are saved in
+config.rds (theta0 approximately 2.568133, zeta1 1.362570, varh 3.324691).
+The EXACT finite-n sampling variance is
+sigma_n^2=4(n-2)zeta1/[n(n-1)]+2 varh/[n(n-1)].
+a_d=1+d*sigma_n/theta0; target a_d*theta0; null theta0; true SD=a_d*sigma_n.
+Three dimensions avoid the one-dimensional sorting formula for absolute
+differences. The ordinary method caches the n-by-n distance matrix; CBB streams
+pairwise distances into its s-by-s bin table and then uses exact quadratic forms.
+The m/n method computes only each selected m-by-m kernel. BLB computes each
+bag's distance kernel. The full-data original point fit is included in timings.
+This is a genuine quadratic kernel; the O(s^2) cache is not a disguised linear
+sample-moment statistic.
+
+REGULARIZED PRECISION
+p=20, lambda=.1. X_i~N_20(0,diag(tau_d,1,...,1)). The statistic is
+e1'[Sigmahat+.1 I_20]^{-1}e1, where
+Sigmahat=n^{-1} sum_i (X_i-Xbar)(X_i-Xbar)' (DENOMINATOR n).
+theta0=1/1.1; theta_d=theta0+d*sqrt(2)/[1.1^2*sqrt(n)];
+tau_d=1/theta_d-.1. Null theta0; target theta_d.
+These alternatives change ONLY the first population coordinate, not all p.
+The Monte Carlo run generates base N_20(0,I) data. If its centered sample
+covariance is S, q=S11-S1,-1(S-1,-1+.1I_19)^{-1}S-1,1, and the statistic at any
+tau is exactly 1/(tau*q+.1). This Schur-complement identity shares computation
+across alternatives without approximation. Lambda is fixed in all resamples.
+Reference sampling SD uses 20000 independent S~Wishart_20(n-1,I)/n draws at each
+n, transformed by the same identity. Seed=999000+n; independent of the main
+study. Reference values, sample SDs, sample means, and normal-approximation SD
+MCSE=SD/sqrt(2*(20000-1)) are saved in precision_reference_n*.rds. The latter
+is about .5% relative MC uncertainty. It is a reference estimate, not an exact
+analytical sampling SD. Tiny bags with b<p are allowed: ridge ensures inversion,
+but does not remove their finite-support statistical error.
+
+METHODS, BUDGETS, AND INTERVALS
+Eight methods, in figure order:
+1 Ordinary bootstrap: sample n original rows with replacement, B times.
+2 m/n m=ceil(log n), 3 m/n m=ceil(sqrt(n)): sample m rows with replacement;
+  bootstrap errors sqrt(m/n)*(T_m^*-T_n). No additional bias correction.
+4 CBB s~log n, 5 CBB s~sqrt(n), 6 CBB s=B: s is NUMBER OF BINS, not rows per
+  bin. Bins have n/s rows, fixed after randomly permuting the original data.
+  Draw s bin indices with replacement; combine cached summaries exactly and
+  evaluate the same statistic. Errors T_n,CBB^*-T_n, with no rescaling.
+  To meet the equal-bin theory, log/sqrt targets are rounded to the nearest
+  divisor of n on the logarithmic scale. Actual (s_log,s_sqrt):
+  n=1000:(8,25), 2000:(8,40), 4000:(8,50), 8000:(10,80),
+  10000:(10,100), 50000:(10,200). s=B exactly; n is divisible by each B.
+7 BLB b=ceil(log n), 8 BLB b=ceil(sqrt n). K=ceil(n/b), as requested. Partition
+  the randomly permuted data into K disjoint balanced bags, each size floor or
+  ceil(n/K). Within EACH bag draw B independent multinomial weight vectors of
+  TOTAL MASS n and probabilities 1/b_j. Thus BLB has K*B resample fits, not B
+  overall. Average bag sample SDs, and separately average bag lower/upper error
+  quantiles. Each error is centered at that bag's empirical plugin functional.
+  Uncentered resample fits are never pooled. For U-statistics, the plugin center
+  is V_b=sum_{i,j}h(X_i,X_j)/b^2, not U_b; the weighted bootstrap statistic has
+  denominator n(n-1), zero diagonal h, and exact repeated-position weights.
+  K, actual b range, and total fit counts are recorded by validation.
+The nominal 95% basic interval is [T_n-q_upper, T_n-q_lower]. Quantile ranks
+are lower=floor((B+1)*.025), upper=lower+ceil((B+1)*.95): ranks (5,196) at
+B200 and (12,488) at B500. SDs use denominator B-1. A test rejects when its
+null target lies outside this interval. These are unstudentized basic intervals.
+
+MEASURES AND FIGURES
+Null rejection at d=0 assesses calibration. Rejection at d>0 is meaningful as
+power only alongside calibration: a higher curve caused by severe null
+overrejection is not superior testing performance. Relative SE RMSE is
+sqrt(mean_R((estimatedSD/trueSD)-1)^2), evaluated at d=0. Relative bias is also
+saved. Pointwise Wilson 95% intervals are shown for calibration/runtime-power;
+SE RMSE bars use the delta-method MCSE from squared relative errors. Power
+curves share data across d and across methods, and should not imply independent
+comparisons. Paired method comparisons are saved by the validation script.
+Runtime excludes data generation and compilation, includes original point fit,
+cache construction, resampling, and SD/interval calculation. Each timing fits
+ONE null statistic, while MC uses exact shared algebra for five alternatives.
+One warmup then five serial runs per setting; report median and IQR. Timings
+are collected with no clinical or simulation Monte Carlo jobs running.
+Main figures 1--5: calibration vs B at larger n; rejection vs d at larger n,
+B500; relative SE RMSE vs n at B500; RMSE vs runtime at larger n, connecting
+B200 and B500; d2 rejection vs runtime at larger n, connecting B200 and B500.
+All five use the same four panels, eight labels/colors, and axis conventions.
+
+TUNING (TO BE RUN AFTER MAIN AND CLINICAL SERIAL TIMINGS)
+Prespecified Gamma examples, n50000, B500, 100 independent data sets per model.
+Controls ceil(log n),25,50,100,ceil(sqrt n),500,1000; vary m for m/n, s for CBB,
+and b for BLB (with K=ceil(n/b)); CBB divisor rounding and duplicate removal.
+Ordinary baseline included. Same DGP, alternatives, exact truths, intervals,
+and BLB aggregation. Two figures: SE RMSE versus serial time; d2 rejection
+versus serial time, with null calibration visible in the latter. This is a
+controlled sensitivity analysis, not post hoc selection of favorable replicates.
+
+INTERPRETATION OF BLB THEOREM 3
+Kleiner et al., A Scalable Bootstrap for Massive Data, JRSS B 76:795--816,
+doi:10.1111/rssb.12050, Algorithm 1 and Theorem 3. The disjoint-bag theorem has
+error O_P((n b K)^(-1/2))+O((b sqrt(n))^(-1)) under its regular expansion and
+moment conditions (with an appropriately pivotal leading expansion term).
+K approximately n/b delivers order n^{-1} only when b is at least order sqrt n;
+the theorem does not include finite-inner-bootstrap MC error. b=log n is an
+aggressive small-support stress regime outside this higher-order guarantee.
+Do not claim the theorem grants raw-SD or unstudentized-CI second-order
+correctness without checking its functional/expansion hypotheses. Nor claim
+BLB is generally slower or fails: K=n/b can demand many more fits than the
+modest/adaptively chosen K often used in BLB practice. Here K is explicit and
+matches the prescribed comparison; all KB costs are counted.
+

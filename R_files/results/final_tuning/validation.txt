@@ -1,0 +1,3 @@
+Validated rows: 22000
+Replicates per tuning setting: 100
+All settings and replicates retained; equal CBB bins; actual BLB budgets recorded.
